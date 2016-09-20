@@ -117,25 +117,35 @@ public partial class Admin_Categories : System.Web.UI.Page
             SqlCommand cmd = new SqlCommand();
             cmd.Connection = conn;
 
+            int categoryId = 0;
             switch (Request.QueryString["action"])
             {
                 case "add":
-                    cmd.CommandText = "INSERT INTO categories (category_title, category_description) VALUES (@category_title, @category_description)";
+                    cmd.CommandText = "INSERT INTO categories (category_title, category_description) VALUES (@category_title, @category_description);SELECT SCOPE_IDENTITY()";
                     break;
 
                 case "edit":
                     cmd.CommandText = "UPDATE categories SET category_title = @category_title, category_description = @category_description WHERE category_id = @id";
-                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = Request.QueryString["category_id"];
+                    int.TryParse(Request.QueryString["category_id"], out categoryId);
+                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = categoryId;
                     break;
             }
 
             cmd.Parameters.Add("@category_title", SqlDbType.VarChar, 32).Value = TextBox_Title.Text;
             cmd.Parameters.Add("@category_description", SqlDbType.VarChar, 200).Value = TextBox_Description.Text;
 
-
             conn.Open();
-            cmd.ExecuteNonQuery();
+            if (categoryId == 0)
+            {
+                categoryId = Convert.ToInt32(cmd.ExecuteScalar());
+            }
+            else {
+                cmd.ExecuteNonQuery();
+            }
             conn.Close();
+
+            CreateFeed(categoryId);
+
             Session["Message"] = "Kategorien blev gemt";
             Response.Redirect("Categories.aspx");
         }
@@ -144,5 +154,11 @@ public partial class Admin_Categories : System.Web.UI.Page
             Panel_Error.Visible = true;
             Label_Error.Text = ex.Message + " <strong>Button_Save_Click(), Categories.aspx.cs</strong>";
         }
+    }
+
+    private void CreateFeed(int id)
+    {
+        RSSfeed.CreateRSSFromCategory(); //Create feed for all news
+        RSSfeed.CreateRSSFromCategory(id); //Create feed for current category
     }
 }

@@ -98,6 +98,9 @@ public partial class Admin_News : System.Web.UI.Page
     {
         try
         {
+            int categoryId = 0;
+            int.TryParse(Request.QueryString["category_id"], out categoryId);
+
             SqlConnection conn = new SqlConnection(Helpers.ConnectionString);
             SqlCommand cmd = new SqlCommand("DELETE FROM news WHERE news_id = @id", conn);
             cmd.Parameters.Add("@id", SqlDbType.Int).Value = news_id;
@@ -105,6 +108,8 @@ public partial class Admin_News : System.Web.UI.Page
             conn.Open();
             cmd.ExecuteNonQuery();
             conn.Close();
+
+            CreateFeed(categoryId); //Update feed on delete
 
             Session["Message"] = "Nyheden blev slettet";
             Response.Redirect("News.aspx");
@@ -148,6 +153,9 @@ public partial class Admin_News : System.Web.UI.Page
     {
         try
         {
+            int categoryId = 0;
+            int.TryParse(Request.QueryString["category_id"], out categoryId);
+
             SqlConnection conn = new SqlConnection(Helpers.ConnectionString);
             SqlCommand cmd = new SqlCommand();
             cmd.Connection = conn;
@@ -157,12 +165,12 @@ public partial class Admin_News : System.Web.UI.Page
                 case "add":
                     cmd.CommandText = "INSERT INTO news (news_title, news_content, news_postdate, fk_users_id, fk_categories_id) VALUES (@news_title, @news_content, GETDATE(), @user_id, @category_id)";
                     cmd.Parameters.Add("@user_id", SqlDbType.Int).Value = Session["user_id"];
-                    cmd.Parameters.Add("@category_id", SqlDbType.Int).Value = Request.QueryString["category_id"];
+                    cmd.Parameters.Add("@category_id", SqlDbType.Int).Value = categoryId;
                     break;
 
                 case "edit":
                     cmd.CommandText = "UPDATE news SET news_title = @news_title, news_content = @news_content WHERE news_id = @id";
-                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = Request.QueryString["news_id"];
+                    cmd.Parameters.Add("@id", SqlDbType.Int).Value = categoryId;
                     break;
             }
 
@@ -172,13 +180,22 @@ public partial class Admin_News : System.Web.UI.Page
             conn.Open();
             cmd.ExecuteNonQuery();
             conn.Close();
+
+            CreateFeed(categoryId); //Update feed on update and insert
+
             Session["Message"] = "Nyheden blev gemt";
-            Response.Redirect("News.aspx?category_id=" + Request.QueryString["category_id"]);
+            Response.Redirect("News.aspx?category_id=" + categoryId);
         }
         catch (Exception ex)
         {
             Panel_Error.Visible = true;
             Label_Error.Text = ex.Message + " <strong>Button_Save_Click(), News.aspx.cs</strong>";
         }
+    }
+
+    private void CreateFeed(int id)
+    {
+        RSSfeed.CreateRSSFromCategory(); //Create feed for all news
+        RSSfeed.CreateRSSFromCategory(id); //Create feed for current category
     }
 }
